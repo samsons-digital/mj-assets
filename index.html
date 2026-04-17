@@ -431,6 +431,81 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
 
 .action-btns{display:flex;gap:5px;flex-wrap:wrap;}
 
+/* ========================
+   EDIT PANEL
+   ======================== */
+.edit-panel{max-width:680px;margin:32px auto;padding:0 16px;}
+
+.edit-pin-screen{
+  background:#ffffff;border:1px solid var(--border);
+  border-radius:20px;padding:36px 32px;
+  max-width:380px;margin:60px auto;text-align:center;
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+}
+.edit-pin-screen h3{
+  font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;
+  color:var(--accent);margin-bottom:8px;
+}
+.edit-pin-screen p{color:var(--text3);font-size:13px;margin-bottom:24px;}
+.edit-pin-input{
+  width:100%;background:#f8f9fc;border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;
+  font-family:'Space Mono',monospace;font-size:22px;
+  letter-spacing:8px;text-align:center;color:var(--text);
+  outline:none;transition:border-color 0.2s;margin-bottom:16px;
+}
+.edit-pin-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,102,204,0.1);}
+.edit-pin-error{color:var(--danger);font-size:12px;margin-bottom:12px;min-height:18px;}
+
+.edit-card{
+  background:#ffffff;border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
+.edit-card-header{
+  padding:18px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(135deg,#f8f9fc,#ffffff);
+}
+.edit-card-icon{
+  width:44px;height:44px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#0066ff);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.edit-card-meta{flex:1;}
+.edit-card-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--text);line-height:1.2;}
+.edit-card-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);margin-top:3px;}
+.edit-card-body{padding:24px;}
+.edit-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+.edit-field{display:flex;flex-direction:column;gap:6px;}
+.edit-field.full{grid-column:1/-1;}
+.edit-field-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'Rajdhani',sans-serif;font-weight:600;}
+.edit-field-input{
+  background:#f8f9fc;border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+  font-family:'Barlow',sans-serif;font-size:14px;
+  color:var(--text);outline:none;transition:border-color 0.2s;
+}
+.edit-field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,102,204,0.1);}
+.edit-field-input option{background:#ffffff;}
+.edit-field-original{font-size:10px;color:var(--text3);margin-top:3px;}
+.edit-field-original span{color:var(--text2);}
+.edit-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:20px;border-top:1px solid var(--border);}
+.edit-change-indicator{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--warning);margin-left:6px;vertical-align:middle;
+  opacity:0;transition:opacity 0.2s;
+}
+.edit-change-indicator.visible{opacity:1;}
+.edit-audit-note{
+  background:#eef5ff;border:1px solid #c8dcf5;
+  border-radius:10px;padding:12px 16px;
+  font-size:12px;color:var(--text2);margin-bottom:20px;
+  display:flex;gap:8px;align-items:flex-start;
+}
+
 .qr-panel{padding:16px;}
 .qr-toolbar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
 
@@ -739,6 +814,7 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
   <button class="nav-tab" onclick="switchTab('analytics',this)">&#128200; Analytics</button>
   <button class="nav-tab" onclick="switchTab('database',this)">&#128203; Register</button>
   <button class="nav-tab" onclick="switchTab('qr',this)">&#127991;&#65039; QR Stickers</button>
+  <button class="nav-tab" id="editNavTab" onclick="switchTab('edit',this)" style="display:none;">&#9998; Editing</button>
 </nav>
 
 <main>
@@ -951,6 +1027,13 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
       <div class="qr-loading"><span class="spinner"></span> Loading...</div>
     </div>
     <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;" id="qrPagination"></div>
+  </div>
+</div>
+
+<!-- EDIT TAB -->
+<div id="tab-edit" class="tab-panel">
+  <div class="edit-panel" id="editPanelContent">
+    <!-- Populated by JS: PIN screen first, then edit form -->
   </div>
 </div>
 
@@ -1668,6 +1751,7 @@ function renderTable() {
       <td style="font-size:11px;color:var(--accent);">${a.last_verified_by||'\u2014'}</td>
       <td><div class="action-btns">
         <button class="btn btn-outline btn-sm" onclick="quickScan('${a.qr_id}')">Verify</button>
+        <button class="btn btn-primary btn-sm" onclick="openEditAsset('${a.qr_id}')">&#9998; Edit</button>
         <button class="btn btn-scrapped btn-sm" onclick="confirmAction('${a.qr_id}','Scrapped')">Scrap</button>
       </div></td>
     </tr>`;
@@ -2274,3 +2358,247 @@ function updateOutstandingBadge() {
 }
 
 </script>
+
+// ============================================================
+// EDIT ASSET — PIN protected, core fields only
+// ============================================================
+const EDIT_PIN = '1234';
+let editTargetQrId = null;
+let editPinVerified = false;
+
+const EDIT_CATEGORIES = [
+  'Plant, Machinery & Equipment','Furniture & Fixtures','Temporary Buildings',
+  'Computer Accessories','Vehicles','Office Equipment','Specialized Vehicles',
+  'Specialized vehicles (Golf Carts)','Pisten Bully','Sports & Recreational',
+  'Zipline & Accessories','Snow Making Machine','Snow Blower','Ecodome',
+  'VR Gaming','Transformer','Tubby Evolution','Funland Swings',
+  'PROPERTY PLANT AND EQUIPMENT','Other'
+];
+
+const EDIT_LOCATIONS = [
+  'Malam Jabba','Green Valley','Top Station','Admin Block',
+  'Workshop','Storage','Mardan','Mingora','Islamabad','Besham/Base','Other'
+];
+
+function openEditAsset(qrId) {
+  editTargetQrId = qrId;
+  editPinVerified = false;
+  const navTab = document.getElementById('editNavTab');
+  if (navTab) navTab.style.display = '';
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-edit').classList.add('active');
+  if (navTab) navTab.classList.add('active');
+  activeTab = 'edit';
+  renderEditPinScreen();
+  window.scrollTo(0, 0);
+}
+
+function renderEditPinScreen() {
+  const asset = assets.find(a => a.qr_id === editTargetQrId);
+  const assetLabel = asset ? asset.qr_id + ' \u00b7 ' + asset.asset_name : editTargetQrId;
+  document.getElementById('editPanelContent').innerHTML =
+    '<div class="edit-pin-screen">' +
+    '<div style="font-size:32px;margin-bottom:12px;">\ud83d\udd12</div>' +
+    '<h3>Admin PIN Required</h3>' +
+    '<p>Enter the admin PIN to edit<br><strong>' + assetLabel + '</strong></p>' +
+    '<input type="password" class="edit-pin-input" id="editPinInput" maxlength="4" ' +
+    'placeholder="\u2022\u2022\u2022\u2022" oninput="onEditPinInput()" autocomplete="off">' +
+    '<div class="edit-pin-error" id="editPinError"></div>' +
+    '<div style="display:flex;gap:10px;justify-content:center;">' +
+    '<button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>' +
+    '<button class="btn btn-primary" onclick="submitEditPin()">Unlock</button>' +
+    '</div></div>';
+  setTimeout(function(){ var i=document.getElementById('editPinInput'); if(i) i.focus(); }, 100);
+}
+
+function onEditPinInput() {
+  var val = (document.getElementById('editPinInput') || {}).value || '';
+  if (val.length === 4) submitEditPin();
+}
+
+function submitEditPin() {
+  var val = (document.getElementById('editPinInput') || {}).value || '';
+  if (val === EDIT_PIN) {
+    editPinVerified = true;
+    renderEditForm();
+  } else {
+    var err = document.getElementById('editPinError');
+    if (err) err.textContent = 'Incorrect PIN. Please try again.';
+    var input = document.getElementById('editPinInput');
+    if (input) { input.value = ''; input.focus(); }
+  }
+}
+
+function renderEditForm() {
+  var asset = assets.find(function(a){ return a.qr_id === editTargetQrId; });
+  if (!asset) { cancelEdit(); return; }
+
+  var catOptions = EDIT_CATEGORIES.map(function(c){
+    return '<option value="' + c + '"' + (c === asset.category ? ' selected' : '') + '>' + c + '</option>';
+  }).join('');
+
+  var locOptions = '<option value="">Select...</option>' + EDIT_LOCATIONS.map(function(l){
+    return '<option value="' + l + '"' + (l === asset.location ? ' selected' : '') + '>' + l + '</option>';
+  }).join('');
+
+  var sc = (asset.status||'active').toLowerCase().replace(/\s+/g,'-');
+
+  document.getElementById('editPanelContent').innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
+    '<button class="btn btn-outline btn-sm" onclick="cancelEdit()">&larr; Back to Register</button>' +
+    '<span style="font-size:11px;color:var(--text3);">Editing asset record</span>' +
+    '</div>' +
+    '<div class="edit-audit-note">' +
+    '<span style="font-size:16px;">\u2139\ufe0f</span>' +
+    '<span>Changes are saved locally and synced to Google Sheets. An edit entry will be logged with your name and timestamp.</span>' +
+    '</div>' +
+    '<div class="edit-card">' +
+    '<div class="edit-card-header">' +
+    '<div class="edit-card-icon">\u270e</div>' +
+    '<div class="edit-card-meta">' +
+    '<div class="edit-card-title">' + asset.asset_name + '</div>' +
+    '<div class="edit-card-sub">' + asset.qr_id + ' &nbsp;&middot;&nbsp; ' + asset.asset_code + '</div>' +
+    '</div>' +
+    '<span class="status-badge ' + sc + '">' + (asset.status||'Active') + '</span>' +
+    '</div>' +
+    '<div class="edit-card-body">' +
+    '<div class="edit-field-grid">' +
+
+    '<div class="edit-field full">' +
+    '<label class="edit-field-label">Asset Name <span class="edit-change-indicator" id="ind-name"></span></label>' +
+    '<input type="text" class="edit-field-input" id="ef-name" value="' + (asset.asset_name||'').replace(/"/g,'&quot;') + '" ' +
+    'oninput="markChanged(\'name\',\'' + (asset.asset_name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
+    '<span class="edit-field-original">Original: <span>' + (asset.asset_name||'\u2014') + '</span></span>' +
+    '</div>' +
+
+    '<div class="edit-field">' +
+    '<label class="edit-field-label">Category <span class="edit-change-indicator" id="ind-category"></span></label>' +
+    '<select class="edit-field-input" id="ef-category" ' +
+    'onchange="markChanged(\'category\',\'' + (asset.category||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
+    catOptions + '</select>' +
+    '<span class="edit-field-original">Original: <span>' + (asset.category||'\u2014') + '</span></span>' +
+    '</div>' +
+
+    '<div class="edit-field">' +
+    '<label class="edit-field-label">Location <span class="edit-change-indicator" id="ind-location"></span></label>' +
+    '<select class="edit-field-input" id="ef-location" ' +
+    'onchange="markChanged(\'location\',\'' + (asset.location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
+    locOptions + '</select>' +
+    '<span class="edit-field-original">Original: <span>' + (asset.location||'\u2014') + '</span></span>' +
+    '</div>' +
+
+    '<div class="edit-field">' +
+    '<label class="edit-field-label">Sub-Location <span class="edit-change-indicator" id="ind-sublocation"></span></label>' +
+    '<input type="text" class="edit-field-input" id="ef-sublocation" ' +
+    'value="' + (asset.sub_location||'').replace(/"/g,'&quot;') + '" ' +
+    'placeholder="e.g. Ski Shop, Chairlift..." ' +
+    'oninput="markChanged(\'sublocation\',\'' + (asset.sub_location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
+    '<span class="edit-field-original">Original: <span>' + (asset.sub_location||'\u2014') + '</span></span>' +
+    '</div>' +
+
+    '</div>' +
+    '<div class="edit-actions">' +
+    '<button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>' +
+    '<button class="btn btn-primary" onclick="saveEditAsset()">\u2713 Save Changes</button>' +
+    '</div>' +
+    '</div></div>';
+}
+
+function markChanged(field, originalValue) {
+  var inputId = {name:'ef-name',category:'ef-category',location:'ef-location',sublocation:'ef-sublocation'}[field];
+  var input = document.getElementById(inputId);
+  var indicator = document.getElementById('ind-' + field);
+  if (!input || !indicator) return;
+  indicator.classList.toggle('visible', input.value.trim() !== originalValue.trim());
+}
+
+async function saveEditAsset() {
+  var asset = assets.find(function(a){ return a.qr_id === editTargetQrId; });
+  if (!asset) return;
+
+  var newName   = (document.getElementById('ef-name')?.value||'').trim();
+  var newCat    = document.getElementById('ef-category')?.value||'';
+  var newLoc    = document.getElementById('ef-location')?.value||'';
+  var newSubLoc = (document.getElementById('ef-sublocation')?.value||'').trim();
+
+  if (!newName) { showToast('Asset name cannot be empty','error'); return; }
+  if (!newCat)  { showToast('Category cannot be empty','error'); return; }
+
+  var changes = [];
+  if (newName   !== (asset.asset_name||''))    changes.push('Name: "' + asset.asset_name + '" \u2192 "' + newName + '"');
+  if (newCat    !== (asset.category||''))      changes.push('Category: "' + asset.category + '" \u2192 "' + newCat + '"');
+  if (newLoc    !== (asset.location||''))      changes.push('Location: "' + (asset.location||'') + '" \u2192 "' + newLoc + '"');
+  if (newSubLoc !== (asset.sub_location||''))  changes.push('Sub-Location: "' + (asset.sub_location||'') + '" \u2192 "' + newSubLoc + '"');
+
+  if (changes.length === 0) { showToast('No changes detected','info'); return; }
+
+  var ts = new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var tsISO = new Date().toISOString();
+
+  var prevName   = asset.asset_name;
+  var prevCat    = asset.category;
+  var prevLoc    = asset.location;
+  var prevSubLoc = asset.sub_location;
+
+  asset.asset_name   = newName;
+  asset.category     = newCat;
+  asset.location     = newLoc;
+  asset.sub_location = newSubLoc;
+  asset.last_edited    = ts;
+  asset.last_edited_by = currentUser?.name || '';
+
+  verificationLog.unshift({
+    qr_id: asset.qr_id, asset_code: asset.asset_code, asset_name: newName,
+    timestamp: ts, condition: 'EDIT: ' + changes.join(' | '), action: 'Edited',
+    by: currentUser?.name||'', role: currentUser?.role||'',
+    gps:'', mapsLink:'', category: newCat, location: newLoc
+  });
+
+  saveState();
+  updateHeaderStats();
+  showToast('"' + newName + '" updated successfully','success');
+
+  if (CONFIG.SCRIPT_URL) {
+    setSyncStatus('\u27f3 Syncing edit to Google Sheets...');
+    var payload = {
+      type:'edit', timestamp:tsISO, timestamp_local:ts,
+      editor_name: currentUser?.name||'', editor_role: currentUser?.role||'',
+      qr_id: asset.qr_id, asset_code: asset.asset_code,
+      changes:{
+        asset_name:   {from:prevName,   to:newName},
+        category:     {from:prevCat,    to:newCat},
+        location:     {from:prevLoc,    to:newLoc},
+        sub_location: {from:prevSubLoc, to:newSubLoc}
+      },
+      change_summary: changes.join(' | ')
+    };
+    try {
+      await fetch(CONFIG.SCRIPT_URL,{
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify(payload)
+      });
+      setSyncStatus('\u2705 Edit synced to Google Sheets \u00b7 ' + ts);
+    } catch(e) {
+      setSyncStatus('\u26a0\ufe0f Edit sync failed \u2014 saved locally');
+    }
+  }
+
+  cancelEdit();
+}
+
+function cancelEdit() {
+  editTargetQrId = null;
+  editPinVerified = false;
+  var content = document.getElementById('editPanelContent');
+  if (content) content.innerHTML = '';
+  var navTab = document.getElementById('editNavTab');
+  if (navTab) navTab.style.display = 'none';
+  var dbTab = document.querySelectorAll('.nav-tab')[3];
+  switchTab('database', dbTab);
+}
+
+</script>
+</body>
+</html>
