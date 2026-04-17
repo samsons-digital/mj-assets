@@ -1552,11 +1552,18 @@ function confirmAction(qrId, action) {
 // HEADER STATS
 // ============================================================
 function updateHeaderStats() {
-  const verified = assets.filter(a =>
-    a.status === 'Verified' || (a.verifications && a.verifications.length > 0)
-  );
   document.getElementById('hstat-total').textContent = assets.length;
-  document.getElementById('hstat-verified').textContent = verified.length;
+
+  // Use live Sheets count if available, otherwise fall back to local
+  let verifiedCount;
+  if (dashboardData && dashboardData.counts && dashboardData.counts['Verified'] !== undefined) {
+    verifiedCount = dashboardData.counts['Verified'];
+  } else {
+    verifiedCount = assets.filter(a =>
+      a.status === 'Verified' || (a.verifications && a.verifications.length > 0)
+    ).length;
+  }
+  document.getElementById('hstat-verified').textContent = verifiedCount;
 }
 
 // ============================================================
@@ -1645,6 +1652,9 @@ function renderDashboard(liveData) {
     <div class="dash-card"><div class="dash-label">Pending</div><div class="dash-val orange">${pending}</div><div class="dash-sub">not yet checked</div></div>
     <div class="dash-card"><div class="dash-label">Scanned Today</div><div class="dash-val green">${scannedToday}</div><div class="dash-sub">unique assets today</div></div>
   `;
+
+  // Update header stats now that dashboardData is populated
+  updateHeaderStats();
 
   const cats = {};
   assets.forEach(a => {
