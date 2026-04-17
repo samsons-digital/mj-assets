@@ -2373,6 +2373,8 @@ function updateOutstandingBadge() {
 // ============================================================
 // EDIT ASSET — PIN protected, core fields only
 // ============================================================
+// EDIT ASSET — PIN protected, permanent tab
+// ============================================================
 const EDIT_PIN = '1234';
 let editTargetQrId = null;
 let editPinVerified = false;
@@ -2391,8 +2393,6 @@ const EDIT_LOCATIONS = [
   'Workshop','Storage','Mardan','Mingora','Islamabad','Besham/Base','Other'
 ];
 
-// Called when Edit tab is clicked — always show PIN screen first
-// unless PIN was already verified this session
 function onEditTabOpen() {
   if (!editPinVerified) {
     editTargetQrId = null;
@@ -2405,88 +2405,133 @@ function onEditTabOpen() {
   window.scrollTo(0, 0);
 }
 
-// Called from Register row Edit button — jump straight to edit tab
-// PIN check happens inside onEditTabOpen via switchTab
 function openEditAsset(qrId) {
   editTargetQrId = qrId;
-  const editTab = document.getElementById('editNavTab');
+  var editTab = document.getElementById('editNavTab');
   switchTab('edit', editTab);
 }
 
 function renderEditPinScreen() {
-  const label = editTargetQrId
-    ? (() => { const a = assets.find(x => x.qr_id === editTargetQrId); return a ? a.qr_id + ' \u00b7 ' + a.asset_name : editTargetQrId; })()
-    : 'the Asset Register';
-  document.getElementById('editPanelContent').innerHTML =
-    '<div class="edit-pin-screen">' +
-    '<div style="font-size:32px;margin-bottom:12px;">\ud83d\udd12</div>' +
-    '<h3>Admin PIN Required</h3>' +
-    '<p>Enter the admin PIN to access<br><strong>Edit Mode</strong></p>' +
-    '<input type="password" class="edit-pin-input" id="editPinInput" maxlength="4" ' +
-    'placeholder="\u2022\u2022\u2022\u2022" oninput="onEditPinInput()" autocomplete="off">' +
-    '<div class="edit-pin-error" id="editPinError"></div>' +
-    '<div style="display:flex;gap:10px;justify-content:center;">' +
-    '<button class="btn btn-primary" onclick="submitEditPin()">Unlock</button>' +
-    '</div></div>';
-  setTimeout(function(){ var i = document.getElementById('editPinInput'); if(i) i.focus(); }, 100);
+  var el = document.getElementById('editPanelContent');
+  if (!el) return;
+  el.innerHTML = [
+    '<div class="edit-pin-screen">',
+    '<div style="font-size:32px;margin-bottom:12px;">&#128274;</div>',
+    '<h3>Admin PIN Required</h3>',
+    '<p>Enter the admin PIN to access<br><strong>Edit Mode</strong></p>',
+    '<input type="password" class="edit-pin-input" id="editPinInput"',
+    ' maxlength="4" placeholder="&#8226;&#8226;&#8226;&#8226;"',
+    ' oninput="onEditPinInput()" autocomplete="off">',
+    '<div class="edit-pin-error" id="editPinError"></div>',
+    '<div style="display:flex;gap:10px;justify-content:center;margin-top:8px;">',
+    '<button class="btn btn-primary" onclick="submitEditPin()">Unlock</button>',
+    '</div>',
+    '</div>'
+  ].join('');
+  setTimeout(function() {
+    var i = document.getElementById('editPinInput');
+    if (i) i.focus();
+  }, 150);
 }
 
-// Search screen — shown after PIN verified, before an asset is selected
+function onEditPinInput() {
+  var val = (document.getElementById('editPinInput') || {}).value || '';
+  if (val.length === 4) submitEditPin();
+}
+
+function submitEditPin() {
+  var val = (document.getElementById('editPinInput') || {}).value || '';
+  if (val === EDIT_PIN) {
+    editPinVerified = true;
+    if (editTargetQrId) {
+      renderEditForm();
+    } else {
+      renderEditSearchScreen();
+    }
+  } else {
+    var err = document.getElementById('editPinError');
+    if (err) err.textContent = 'Incorrect PIN. Please try again.';
+    var input = document.getElementById('editPinInput');
+    if (input) { input.value = ''; input.focus(); }
+  }
+}
+
 function renderEditSearchScreen() {
-  document.getElementById('editPanelContent').innerHTML =
-    '<div style="margin-bottom:20px;">' +
-    '<h2 style="font-family:\'Rajdhani\',sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:6px;">\u270e Edit Asset</h2>' +
-    '<p style="color:var(--text2);font-size:13px;">Search for an asset by name, code or QR ID, then select it to edit.</p>' +
-    '</div>' +
-    '<div style="display:flex;gap:10px;margin-bottom:16px;">' +
-    '<input type="text" class="db-search" id="editSearchInput" placeholder="Search name, code, QR ID..." ' +
-    'oninput="renderEditSearchResults()" style="flex:1;" autocomplete="off">' +
-    '<button class="btn btn-outline btn-sm" onclick="lockEditTab()">\ud83d\udd12 Lock</button>' +
-    '</div>' +
-    '<div id="editSearchResults" style="background:#ffffff;border:1px solid var(--border);border-radius:14px;overflow:hidden;"></div>';
-  setTimeout(function(){ var i = document.getElementById('editSearchInput'); if(i) i.focus(); }, 100);
-  renderEditSearchResults();
+  var el = document.getElementById('editPanelContent');
+  if (!el) return;
+  el.innerHTML = [
+    '<div style="max-width:800px;margin:0 auto;padding:24px 0;">',
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">',
+    '<div>',
+    '<h2 style="font-family:Rajdhani,sans-serif;font-size:22px;font-weight:700;',
+    'letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">',
+    '&#9998; Edit Asset</h2>',
+    '<p style="color:var(--text2);font-size:13px;">Search for an asset by name, code or QR ID.</p>',
+    '</div>',
+    '<button class="btn btn-outline btn-sm" onclick="lockEditTab()">&#128274; Lock</button>',
+    '</div>',
+    '<div style="margin-bottom:16px;">',
+    '<input type="text" class="db-search" id="editSearchInput"',
+    ' placeholder="Type asset name, code or QR ID..."',
+    ' oninput="renderEditSearchResults()"',
+    ' style="width:100%;max-width:100%;" autocomplete="off">',
+    '</div>',
+    '<div id="editSearchResults" style="background:#ffffff;border:1px solid var(--border);',
+    'border-radius:14px;overflow:hidden;overflow-x:auto;"></div>',
+    '</div>'
+  ].join('');
+  setTimeout(function() {
+    var i = document.getElementById('editSearchInput');
+    if (i) i.focus();
+    renderEditSearchResults();
+  }, 100);
 }
 
 function renderEditSearchResults() {
-  const query = (document.getElementById('editSearchInput')?.value || '').toLowerCase().trim();
-  const container = document.getElementById('editSearchResults');
+  var container = document.getElementById('editSearchResults');
   if (!container) return;
+  var query = ((document.getElementById('editSearchInput') || {}).value || '').toLowerCase().trim();
 
-  let filtered;
-  if (!query) {
-    // Show first 20 assets when no search
-    filtered = assets.filter(a => !['Scrapped','Disposed'].includes(a.status)).slice(0, 20);
-  } else {
-    filtered = assets.filter(a => {
-      if (['Scrapped','Disposed'].includes(a.status)) return false;
-      return (a.asset_name||'').toLowerCase().includes(query) ||
-             (a.asset_code||'').toLowerCase().includes(query) ||
-             (a.qr_id||'').toLowerCase().includes(query) ||
-             (a.category||'').toLowerCase().includes(query);
-    }).slice(0, 30);
-  }
+  var filtered = assets.filter(function(a) {
+    if (a.status === 'Scrapped' || a.status === 'Disposed') return false;
+    if (!query) return true;
+    return (a.asset_name||'').toLowerCase().indexOf(query) !== -1 ||
+           (a.asset_code||'').toLowerCase().indexOf(query) !== -1 ||
+           (a.qr_id||'').toLowerCase().indexOf(query) !== -1 ||
+           (a.category||'').toLowerCase().indexOf(query) !== -1 ||
+           (a.location||'').toLowerCase().indexOf(query) !== -1;
+  }).slice(0, query ? 50 : 25);
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No assets found. Try a different search term.</div>';
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;">No assets found. Try a different search term.</div>';
     return;
   }
 
-  container.innerHTML = '<table class="db-table" style="min-width:500px;">' +
-    '<thead><tr><th>QR ID</th><th>Asset Code</th><th>Asset Name</th><th>Category</th><th>Location</th><th></th></tr></thead>' +
-    '<tbody>' +
-    filtered.map(function(a) {
-      return '<tr>' +
-        '<td><span class="code-pill">' + a.qr_id + '</span></td>' +
-        '<td style="font-size:11px;">' + a.asset_code + '</td>' +
-        '<td style="font-size:12px;">' + a.asset_name + '</td>' +
-        '<td style="font-size:11px;color:var(--text3);">' + (a.category||'\u2014') + '</td>' +
-        '<td style="font-size:11px;color:var(--text3);">' + (a.location||'\u2014') + '</td>' +
-        '<td><button class="btn btn-primary btn-sm" onclick="selectAssetToEdit(\'' + a.qr_id + '\')">Edit</button></td>' +
-        '</tr>';
-    }).join('') +
-    '</tbody></table>' +
-    (filtered.length === 30 ? '<div style="padding:10px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">Showing first 30 results. Refine your search to find a specific asset.</div>' : '');
+  var rows = filtered.map(function(a) {
+    var sc = (a.status||'active').toLowerCase().replace(/\s+/g,'-');
+    return '<tr>' +
+      '<td><span class="code-pill">' + a.qr_id + '</span></td>' +
+      '<td style="font-size:11px;white-space:nowrap;">' + a.asset_code + '</td>' +
+      '<td style="font-size:12px;">' + a.asset_name + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + (a.category||'&mdash;') + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + (a.location||'&mdash;') + '</td>' +
+      '<td><span class="status-badge ' + sc + '">' + (a.status||'Active') + '</span></td>' +
+      '<td><button class="btn btn-primary btn-sm" onclick="selectAssetToEdit(\'' + a.qr_id + '\')">&#9998; Edit</button></td>' +
+      '</tr>';
+  }).join('');
+
+  var footer = (!query && assets.filter(function(a){ return a.status !== 'Scrapped' && a.status !== 'Disposed'; }).length > 25)
+    ? '<div style="padding:10px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">Showing first 25 assets. Type to search all 627.</div>'
+    : '';
+
+  container.innerHTML =
+    '<table class="db-table" style="min-width:700px;">' +
+    '<thead><tr>' +
+    '<th>QR ID</th><th>Asset Code</th><th>Asset Name</th>' +
+    '<th>Category</th><th>Location</th><th>Status</th><th></th>' +
+    '</tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table>' + footer;
 }
 
 function selectAssetToEdit(qrId) {
@@ -2501,139 +2546,127 @@ function lockEditTab() {
   renderEditPinScreen();
 }
 
-function cancelEdit() {
-  editTargetQrId = null;
-  // Stay on edit tab, go back to search screen
-  renderEditSearchScreen();
-}
-
-function onEditPinInput() {
-  var val = (document.getElementById('editPinInput') || {}).value || '';
-  if (val.length === 4) submitEditPin();
-}
-
-function submitEditPin() {
-  var val = (document.getElementById('editPinInput') || {}).value || '';
-  if (val === EDIT_PIN) {
-    editPinVerified = true;
-    // If coming from Register row, go straight to edit form; otherwise show search
-    if (editTargetQrId) {
-      renderEditForm();
-    } else {
-      renderEditSearchScreen();
-    }
-  } else {
-    var err = document.getElementById('editPinError');
-    if (err) err.textContent = 'Incorrect PIN. Please try again.';
-    var input = document.getElementById('editPinInput');
-    if (input) { input.value = ''; input.focus(); }
-  }
-}
-
 function renderEditForm() {
-  var asset = assets.find(function(a){ return a.qr_id === editTargetQrId; });
-  if (!asset) { cancelEdit(); return; }
+  var asset = assets.find(function(a) { return a.qr_id === editTargetQrId; });
+  if (!asset) { renderEditSearchScreen(); return; }
+  var el = document.getElementById('editPanelContent');
+  if (!el) return;
 
-  var catOptions = EDIT_CATEGORIES.map(function(c){
+  var catOptions = EDIT_CATEGORIES.map(function(c) {
     return '<option value="' + c + '"' + (c === asset.category ? ' selected' : '') + '>' + c + '</option>';
   }).join('');
 
-  var locOptions = '<option value="">Select...</option>' + EDIT_LOCATIONS.map(function(l){
-    return '<option value="' + l + '"' + (l === asset.location ? ' selected' : '') + '>' + l + '</option>';
+  var locOptions = '<option value="">Select location...</option>' + EDIT_LOCATIONS.map(function(l) {
+    return '<option value="' + l + '"' + (l === (asset.location||'') ? ' selected' : '') + '>' + l + '</option>';
   }).join('');
 
   var sc = (asset.status||'active').toLowerCase().replace(/\s+/g,'-');
 
-  document.getElementById('editPanelContent').innerHTML =
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
-    '<button class="btn btn-outline btn-sm" onclick="cancelEdit()">&larr; Back to Search</button>' +
-    '<span style="font-size:11px;color:var(--text3);">Editing asset record</span>' +
-    '</div>' +
-    '<div class="edit-audit-note">' +
-    '<span style="font-size:16px;">\u2139\ufe0f</span>' +
-    '<span>Changes are saved locally and synced to Google Sheets. An edit entry will be logged with your name and timestamp.</span>' +
-    '</div>' +
-    '<div class="edit-card">' +
-    '<div class="edit-card-header">' +
-    '<div class="edit-card-icon">\u270e</div>' +
-    '<div class="edit-card-meta">' +
-    '<div class="edit-card-title">' + asset.asset_name + '</div>' +
-    '<div class="edit-card-sub">' + asset.qr_id + ' &nbsp;&middot;&nbsp; ' + asset.asset_code + '</div>' +
-    '</div>' +
-    '<span class="status-badge ' + sc + '">' + (asset.status||'Active') + '</span>' +
-    '</div>' +
-    '<div class="edit-card-body">' +
-    '<div class="edit-field-grid">' +
+  el.innerHTML = [
+    '<div style="max-width:700px;margin:0 auto;padding:24px 0;">',
 
-    '<div class="edit-field full">' +
-    '<label class="edit-field-label">Asset Name <span class="edit-change-indicator" id="ind-name"></span></label>' +
-    '<input type="text" class="edit-field-input" id="ef-name" value="' + (asset.asset_name||'').replace(/"/g,'&quot;') + '" ' +
-    'oninput="markChanged(\'name\',\'' + (asset.asset_name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
-    '<span class="edit-field-original">Original: <span>' + (asset.asset_name||'\u2014') + '</span></span>' +
-    '</div>' +
+    // Back button
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">',
+    '<button class="btn btn-outline btn-sm" onclick="cancelEdit()">&larr; Back to Search</button>',
+    '<span style="font-size:11px;color:var(--text3);">Editing asset record</span>',
+    '<button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="lockEditTab()">&#128274; Lock</button>',
+    '</div>',
 
-    '<div class="edit-field">' +
-    '<label class="edit-field-label">Category <span class="edit-change-indicator" id="ind-category"></span></label>' +
-    '<select class="edit-field-input" id="ef-category" ' +
-    'onchange="markChanged(\'category\',\'' + (asset.category||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
-    catOptions + '</select>' +
-    '<span class="edit-field-original">Original: <span>' + (asset.category||'\u2014') + '</span></span>' +
-    '</div>' +
+    // Info note
+    '<div class="edit-audit-note">',
+    '<span style="font-size:15px;">&#9432;</span>',
+    '<span>Changes are saved locally and synced to Google Sheets. An edit entry is logged with your name and timestamp.</span>',
+    '</div>',
 
-    '<div class="edit-field">' +
-    '<label class="edit-field-label">Location <span class="edit-change-indicator" id="ind-location"></span></label>' +
-    '<select class="edit-field-input" id="ef-location" ' +
-    'onchange="markChanged(\'location\',\'' + (asset.location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
-    locOptions + '</select>' +
-    '<span class="edit-field-original">Original: <span>' + (asset.location||'\u2014') + '</span></span>' +
-    '</div>' +
+    // Card header
+    '<div class="edit-card">',
+    '<div class="edit-card-header">',
+    '<div class="edit-card-icon">&#9998;</div>',
+    '<div class="edit-card-meta">',
+    '<div class="edit-card-title">' + asset.asset_name + '</div>',
+    '<div class="edit-card-sub">' + asset.qr_id + ' &middot; ' + asset.asset_code + '</div>',
+    '</div>',
+    '<span class="status-badge ' + sc + '">' + (asset.status||'Active') + '</span>',
+    '</div>',
 
-    '<div class="edit-field">' +
-    '<label class="edit-field-label">Sub-Location <span class="edit-change-indicator" id="ind-sublocation"></span></label>' +
-    '<input type="text" class="edit-field-input" id="ef-sublocation" ' +
-    'value="' + (asset.sub_location||'').replace(/"/g,'&quot;') + '" ' +
-    'placeholder="e.g. Ski Shop, Chairlift..." ' +
-    'oninput="markChanged(\'sublocation\',\'' + (asset.sub_location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' +
-    '<span class="edit-field-original">Original: <span>' + (asset.sub_location||'\u2014') + '</span></span>' +
-    '</div>' +
+    // Form body
+    '<div class="edit-card-body">',
+    '<div class="edit-field-grid">',
 
-    '</div>' +
-    '<div class="edit-actions">' +
-    '<button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>' +
-    '<button class="btn btn-primary" onclick="saveEditAsset()">\u2713 Save Changes</button>' +
-    '</div>' +
-    '</div></div>';
+    // Asset Name
+    '<div class="edit-field full">',
+    '<label class="edit-field-label">Asset Name <span class="edit-change-indicator" id="ind-name"></span></label>',
+    '<input type="text" class="edit-field-input" id="ef-name"',
+    ' value="' + (asset.asset_name||'').replace(/"/g,'&quot;') + '"',
+    ' oninput="markChanged(\'name\',this.value,\'' + (asset.asset_name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"') + '\')">',
+    '<div class="edit-field-original">Original: <span>' + (asset.asset_name||'&mdash;') + '</span></div>',
+    '</div>',
+
+    // Category
+    '<div class="edit-field">',
+    '<label class="edit-field-label">Category <span class="edit-change-indicator" id="ind-category"></span></label>',
+    '<select class="edit-field-input" id="ef-category"',
+    ' onchange="markChanged(\'category\',this.value,\'' + (asset.category||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' + catOptions + '</select>',
+    '<div class="edit-field-original">Original: <span>' + (asset.category||'&mdash;') + '</span></div>',
+    '</div>',
+
+    // Location
+    '<div class="edit-field">',
+    '<label class="edit-field-label">Location <span class="edit-change-indicator" id="ind-location"></span></label>',
+    '<select class="edit-field-input" id="ef-location"',
+    ' onchange="markChanged(\'location\',this.value,\'' + (asset.location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' + locOptions + '</select>',
+    '<div class="edit-field-original">Original: <span>' + (asset.location||'&mdash;') + '</span></div>',
+    '</div>',
+
+    // Sub-Location
+    '<div class="edit-field">',
+    '<label class="edit-field-label">Sub-Location <span class="edit-change-indicator" id="ind-sublocation"></span></label>',
+    '<input type="text" class="edit-field-input" id="ef-sublocation"',
+    ' value="' + (asset.sub_location||'').replace(/"/g,'&quot;') + '"',
+    ' placeholder="e.g. Ski Shop, Chairlift..."',
+    ' oninput="markChanged(\'sublocation\',this.value,\'' + (asset.sub_location||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"') + '\')">',
+    '<div class="edit-field-original">Original: <span>' + (asset.sub_location||'&mdash;') + '</span></div>',
+    '</div>',
+
+    '</div>',
+
+    // Actions
+    '<div class="edit-actions">',
+    '<button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>',
+    '<button class="btn btn-primary" onclick="saveEditAsset()">&#10003; Save Changes</button>',
+    '</div>',
+
+    '</div></div></div>'
+  ].join('');
 }
 
-function markChanged(field, originalValue) {
-  var inputId = {name:'ef-name',category:'ef-category',location:'ef-location',sublocation:'ef-sublocation'}[field];
-  var input = document.getElementById(inputId);
+function markChanged(field, newVal, originalVal) {
   var indicator = document.getElementById('ind-' + field);
-  if (!input || !indicator) return;
-  indicator.classList.toggle('visible', input.value.trim() !== originalValue.trim());
+  if (!indicator) return;
+  indicator.classList.toggle('visible', newVal.trim() !== originalVal.trim());
 }
 
 async function saveEditAsset() {
-  var asset = assets.find(function(a){ return a.qr_id === editTargetQrId; });
+  var asset = assets.find(function(a) { return a.qr_id === editTargetQrId; });
   if (!asset) return;
 
-  var newName   = (document.getElementById('ef-name')?.value||'').trim();
-  var newCat    = document.getElementById('ef-category')?.value||'';
-  var newLoc    = document.getElementById('ef-location')?.value||'';
-  var newSubLoc = (document.getElementById('ef-sublocation')?.value||'').trim();
+  var newName   = ((document.getElementById('ef-name') || {}).value || '').trim();
+  var newCat    = (document.getElementById('ef-category') || {}).value || '';
+  var newLoc    = (document.getElementById('ef-location') || {}).value || '';
+  var newSubLoc = ((document.getElementById('ef-sublocation') || {}).value || '').trim();
 
-  if (!newName) { showToast('Asset name cannot be empty','error'); return; }
-  if (!newCat)  { showToast('Category cannot be empty','error'); return; }
+  if (!newName) { showToast('Asset name cannot be empty', 'error'); return; }
+  if (!newCat)  { showToast('Category cannot be empty', 'error'); return; }
 
   var changes = [];
-  if (newName   !== (asset.asset_name||''))    changes.push('Name: "' + asset.asset_name + '" \u2192 "' + newName + '"');
-  if (newCat    !== (asset.category||''))      changes.push('Category: "' + asset.category + '" \u2192 "' + newCat + '"');
-  if (newLoc    !== (asset.location||''))      changes.push('Location: "' + (asset.location||'') + '" \u2192 "' + newLoc + '"');
-  if (newSubLoc !== (asset.sub_location||''))  changes.push('Sub-Location: "' + (asset.sub_location||'') + '" \u2192 "' + newSubLoc + '"');
+  if (newName   !== (asset.asset_name   || '')) changes.push('Name: "' + asset.asset_name + '" to "' + newName + '"');
+  if (newCat    !== (asset.category     || '')) changes.push('Category: "' + asset.category + '" to "' + newCat + '"');
+  if (newLoc    !== (asset.location     || '')) changes.push('Location: "' + (asset.location||'') + '" to "' + newLoc + '"');
+  if (newSubLoc !== (asset.sub_location || '')) changes.push('Sub-Location: "' + (asset.sub_location||'') + '" to "' + newSubLoc + '"');
 
-  if (changes.length === 0) { showToast('No changes detected','info'); return; }
+  if (changes.length === 0) { showToast('No changes detected', 'info'); return; }
 
-  var ts = new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var ts    = new Date().toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
   var tsISO = new Date().toISOString();
 
   var prevName   = asset.asset_name;
@@ -2646,57 +2679,54 @@ async function saveEditAsset() {
   asset.location     = newLoc;
   asset.sub_location = newSubLoc;
   asset.last_edited    = ts;
-  asset.last_edited_by = currentUser?.name || '';
+  asset.last_edited_by = currentUser ? currentUser.name : '';
 
   verificationLog.unshift({
     qr_id: asset.qr_id, asset_code: asset.asset_code, asset_name: newName,
     timestamp: ts, condition: 'EDIT: ' + changes.join(' | '), action: 'Edited',
-    by: currentUser?.name||'', role: currentUser?.role||'',
-    gps:'', mapsLink:'', category: newCat, location: newLoc
+    by: currentUser ? currentUser.name : '', role: currentUser ? currentUser.role : '',
+    gps: '', mapsLink: '', category: newCat, location: newLoc
   });
 
   saveState();
   updateHeaderStats();
-  showToast('"' + newName + '" updated successfully','success');
+  showToast('"' + newName + '" updated successfully', 'success');
 
   if (CONFIG.SCRIPT_URL) {
-    setSyncStatus('\u27f3 Syncing edit to Google Sheets...');
+    setSyncStatus('Syncing edit to Google Sheets...');
     var payload = {
-      type:'edit', timestamp:tsISO, timestamp_local:ts,
-      editor_name: currentUser?.name||'', editor_role: currentUser?.role||'',
+      type: 'edit', timestamp: tsISO, timestamp_local: ts,
+      editor_name: currentUser ? currentUser.name : '',
+      editor_role: currentUser ? currentUser.role : '',
       qr_id: asset.qr_id, asset_code: asset.asset_code,
-      changes:{
-        asset_name:   {from:prevName,   to:newName},
-        category:     {from:prevCat,    to:newCat},
-        location:     {from:prevLoc,    to:newLoc},
-        sub_location: {from:prevSubLoc, to:newSubLoc}
+      changes: {
+        asset_name:   { from: prevName,   to: newName   },
+        category:     { from: prevCat,    to: newCat    },
+        location:     { from: prevLoc,    to: newLoc    },
+        sub_location: { from: prevSubLoc, to: newSubLoc }
       },
       change_summary: changes.join(' | ')
     };
     try {
-      await fetch(CONFIG.SCRIPT_URL,{
-        method:'POST', mode:'no-cors',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify(payload)
+      await fetch(CONFIG.SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
       });
-      setSyncStatus('\u2705 Edit synced to Google Sheets \u00b7 ' + ts);
+      setSyncStatus('Edit synced to Google Sheets - ' + ts);
     } catch(e) {
-      setSyncStatus('\u26a0\ufe0f Edit sync failed \u2014 saved locally');
+      setSyncStatus('Edit sync failed - saved locally');
     }
   }
 
-  cancelEdit();
+  // Return to search screen after save
+  editTargetQrId = null;
+  renderEditSearchScreen();
 }
 
 function cancelEdit() {
   editTargetQrId = null;
-  editPinVerified = false;
-  var content = document.getElementById('editPanelContent');
-  if (content) content.innerHTML = '';
-  var navTab = document.getElementById('editNavTab');
-  if (navTab) navTab.style.display = 'none';
-  var dbTab = document.querySelectorAll('.nav-tab')[3];
-  switchTab('database', dbTab);
+  renderEditSearchScreen();
 }
 
 </script>
