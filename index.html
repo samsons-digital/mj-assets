@@ -1076,7 +1076,7 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title" style="margin-bottom:2px;">Submissions Log</div>
-        <div style="font-size:12px;color:var(--text3);">Every verification, edit and action recorded in this session</div>
+        <div style="font-size:12px;color:var(--text3);" id="logSyncStatus">Connecting to Google Sheets...</div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-outline btn-sm" onclick="renderLogTab()">&#8635; Refresh</button>
@@ -2832,7 +2832,74 @@ function cancelEdit() {
 // ============================================================
 // SUBMISSIONS LOG TAB
 // ============================================================
-function renderLogTab() {
+// Combined live log: Sheets rows merged with local session entries
+var liveLogRows = [];
+
+async function renderLogTab() {
+  var status = document.getElementById('logSyncStatus');
+  if (status) status.textContent = 'Fetching from Google Sheets...';
+
+  if (!CONFIG.SCRIPT_URL) {
+    if (status) status.textContent = 'Google Sheets not connected — showing local session data only';
+    renderLogSummary();
+    renderLogTable();
+    return;
+  }
+
+  try {
+    var url = CONFIG.SCRIPT_URL + '?action=getLog&t=' + Date.now();
+    var resp = await fetch(url, { method: 'GET', mode: 'cors' });
+    var data = await resp.json();
+
+    if (data.status === 'ok' && data.rows && data.rows.length > 0) {
+      // Normalise Sheets rows to match local verificationLog format
+      var sheetsRows = data.rows.map(function(r) {
+        return {
+          qr_id:        r.qr_id        || r.qr_id        || '',
+          asset_code:   r.asset_code   || '',
+          asset_name:   r.asset_name   || '',
+          timestamp:    r.timestamp_local || r.timestamp || '',
+          condition:    r.condition_notes || r.condition || '',
+          action:       r.action        || '',
+          by:           r.verifier_name || r.by || '',
+          role:         r.verifier_role || r.role || '',
+          gps:          r.gps_coordinates || r.gps || '',
+          mapsLink:     r.google_maps_link || r.mapsLink || '',
+          category:     r.category      || '',
+          location:     r.location      || '',
+          entry_method: r.entry_method  || null,
+          source:       'sheets'
+        };
+      });
+
+      // Merge: keep local session entries that aren't already in Sheets
+      // (local entries have no source field, sheets entries have source:'sheets')
+      var localOnly = verificationLog.filter(function(v) {
+        return !v.source; // local entries added this session
+      });
+
+      // Deduplicate local vs sheets by qr_id + timestamp
+      var sheetsKeys = {};
+      sheetsRows.forEach(function(r) {
+        sheetsKeys[(r.qr_id || '') + '|' + (r.timestamp || '')] = true;
+      });
+      var uniqueLocal = localOnly.filter(function(v) {
+        return !sheetsKeys[(v.qr_id || '') + '|' + (v.timestamp || '')];
+      });
+
+      liveLogRows = uniqueLocal.concat(sheetsRows);
+
+      var ts = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      if (status) status.textContent = 'Live data from Google Sheets - ' + liveLogRows.length + ' records - updated ' + ts;
+    } else {
+      liveLogRows = verificationLog.slice();
+      if (status) status.textContent = 'No Sheets data returned - showing local session only';
+    }
+  } catch(err) {
+    liveLogRows = verificationLog.slice();
+    if (status) status.textContent = 'Could not reach Google Sheets - showing local session only';
+  }
+
   renderLogSummary();
   renderLogTable();
 }
@@ -2842,7 +2909,8 @@ function getLogFiltered() {
   var action  = ((document.getElementById('logFilterAction') || {}).value || '');
   var entry   = ((document.getElementById('logFilterEntry')  || {}).value || '');
 
-  return verificationLog.filter(function(v) {
+  var source  = liveLogRows.length > 0 ? liveLogRows : verificationLog;
+  return source.filter(function(v) {
     if (action && v.action !== action) return false;
     if (entry) {
       var em = v.entry_method || detectEntryMethod(v.qr_id);
@@ -2866,17 +2934,18 @@ function detectEntryMethod(qrId) {
 function renderLogSummary() {
   var bar = document.getElementById('logSummaryBar');
   if (!bar) return;
-  var total    = verificationLog.length;
-  var camera   = verificationLog.filter(function(v){ return v.entry_method === 'Camera Scan'; }).length;
-  var typedQR  = verificationLog.filter(function(v){
+  var source   = liveLogRows.length > 0 ? liveLogRows : verificationLog;
+  var total    = source.length;
+  var camera   = source.filter(function(v){ return v.entry_method === 'Camera Scan'; }).length;
+  var typedQR  = source.filter(function(v){
     var em = v.entry_method || detectEntryMethod(v.qr_id);
     return em === 'Typed QR';
   }).length;
-  var typedCode = verificationLog.filter(function(v){
+  var typedCode = source.filter(function(v){
     var em = v.entry_method || detectEntryMethod(v.qr_id);
     return em === 'Typed Code';
   }).length;
-  var verified  = verificationLog.filter(function(v){ return v.action === 'Verified'; }).length;
+  var verified  = source.filter(function(v){ return v.action === 'Verified'; }).length;
   var flagPct   = total > 0 ? Math.round((typedCode / total) * 100) : 0;
 
   bar.innerHTML =
