@@ -2929,8 +2929,8 @@ function renderLogTable() {
     if (notes && notes.length > 40) notes = notes.substring(0, 40) + '&hellip;';
 
     return '<tr class="' + rowClass(v) + '">' +
-      '<td style="color:var(--text3);font-size:10px;font-family:'Space Mono',monospace;">' + (filtered.length - i) + '</td>' +
-      '<td style="font-family:'Space Mono',monospace;font-size:10px;white-space:nowrap;color:var(--text2);">' + (v.timestamp||'&mdash;') + '</td>' +
+      '<td style="color:var(--text3);font-size:10px;font-family:monospace;">' + (filtered.length - i) + '</td>' +
+      '<td style="font-family:monospace;font-size:10px;white-space:nowrap;color:var(--text2);">' + (v.timestamp||'&mdash;') + '</td>' +
       '<td><span class="code-pill">' + (v.qr_id||'&mdash;') + '</span></td>' +
       '<td style="font-size:12px;font-weight:500;">' + (v.asset_name||'&mdash;') + '</td>' +
       '<td style="font-size:11px;color:var(--text3);">' + (v.category||'&mdash;') + '</td>' +
