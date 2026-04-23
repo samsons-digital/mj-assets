@@ -594,6 +594,38 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 .qr-loading{text-align:center;padding:20px;color:var(--text3);}
+/* ========================
+   SUBMISSIONS LOG
+   ======================== */
+.log-panel{padding:20px 16px;}
+.log-toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.log-table-wrap{background:#ffffff;border:1px solid var(--border);border-radius:16px;overflow:hidden;overflow-x:auto;}
+.log-table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px;}
+.log-table th{background:#f4f6f9;padding:10px 12px;text-align:left;font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;}
+.log-table td{padding:9px 12px;border-bottom:1px solid rgba(221,227,236,0.6);vertical-align:middle;}
+.log-table tr:last-child td{border-bottom:none;}
+.log-table tr:hover td{background:rgba(0,102,204,0.02);}
+.log-row-camera td{background:rgba(42,157,92,0.04);}
+.log-row-typed-qr td{background:rgba(0,102,204,0.04);}
+.log-row-typed-code td{background:rgba(245,159,0,0.08);}
+.log-row-typed-code:hover td{background:rgba(245,159,0,0.14) !important;}
+.entry-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.5px;white-space:nowrap;}
+.entry-badge.camera{background:rgba(42,157,92,0.15);color:#2a9d5c;border:1px solid rgba(42,157,92,0.25);}
+.entry-badge.typed-qr{background:rgba(0,102,204,0.12);color:#0066cc;border:1px solid rgba(0,102,204,0.2);}
+.entry-badge.typed-code{background:rgba(245,159,0,0.18);color:#c47d00;border:1px solid rgba(245,159,0,0.3);}
+.log-flag-note{font-size:10px;color:var(--warning);margin-top:2px;}
+.action-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.action-badge.verified{background:rgba(42,157,92,0.12);color:#2a9d5c;}
+.action-badge.needs-attention{background:rgba(245,159,0,0.15);color:#c47d00;}
+.action-badge.scrapped{background:rgba(108,92,231,0.12);color:#6c5ce7;}
+.action-badge.disposed{background:rgba(232,49,58,0.12);color:#e8313a;}
+.action-badge.edited{background:rgba(0,102,204,0.12);color:#0066cc;}
+.log-summary-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+.log-stat{background:#ffffff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--text2);}
+.log-stat strong{display:block;font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);line-height:1.1;}
+.log-stat.warn strong{color:var(--warning);}
+.log-stat.good strong{color:var(--success);}
+
 
 /* ========================
    OUTSTANDING PANEL
@@ -814,6 +846,7 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
   <button class="nav-tab" onclick="switchTab('analytics',this)">&#128200; Analytics</button>
   <button class="nav-tab" onclick="switchTab('database',this)">&#128203; Register</button>
   <button class="nav-tab" onclick="switchTab('qr',this)">&#127991;&#65039; QR Stickers</button>
+  <button class="nav-tab" onclick="switchTab('log',this)">&#128203; Log</button>
   <button class="nav-tab" id="editNavTab" onclick="switchTab('edit',this)">&#9998; Edit</button>
 </nav>
 
@@ -1037,6 +1070,63 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
   </div>
 </div>
 
+<!-- SUBMISSIONS LOG TAB -->
+<div id="tab-log" class="tab-panel">
+  <div class="log-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="section-title" style="margin-bottom:2px;">Submissions Log</div>
+        <div style="font-size:12px;color:var(--text3);">Every verification, edit and action recorded in this session</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="renderLogTab()">&#8635; Refresh</button>
+        <button class="btn btn-outline btn-sm" onclick="exportLogCSV()">&#8595; CSV</button>
+      </div>
+    </div>
+    <div class="log-summary-bar" id="logSummaryBar"></div>
+    <div class="log-toolbar">
+      <input type="text" class="db-search" id="logSearch" placeholder="Search asset name, code, verifier..." oninput="renderLogTable()" style="flex:1;min-width:200px;">
+      <select class="db-filter" id="logFilterAction" onchange="renderLogTable()" style="min-width:140px;">
+        <option value="">All Actions</option>
+        <option value="Verified">Verified</option>
+        <option value="Needs Attention">Needs Attention</option>
+        <option value="Scrapped">Scrapped</option>
+        <option value="Disposed">Disposed</option>
+        <option value="Edited">Edited</option>
+      </select>
+      <select class="db-filter" id="logFilterEntry" onchange="renderLogTable()" style="min-width:150px;">
+        <option value="">All Entry Methods</option>
+        <option value="Camera Scan">Camera Scan</option>
+        <option value="Typed QR">Typed QR</option>
+        <option value="Typed Code">Typed Code (flag)</option>
+      </select>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date &amp; Time</th>
+            <th>QR ID</th>
+            <th>Asset Name</th>
+            <th>Category</th>
+            <th>Action</th>
+            <th>Entry Method</th>
+            <th>Verifier</th>
+            <th>Condition Notes</th>
+            <th>GPS</th>
+          </tr>
+        </thead>
+        <tbody id="logTableBody">
+          <tr><td colspan="10" style="padding:20px;text-align:center;color:var(--text3);">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);background:#ffffff;border-radius:0 0 16px 16px;" id="logFooter"></div>
+  </div>
+</div>
+
+
 </main>
 
 <div id="scannerOverlay">
@@ -1165,6 +1255,7 @@ let qrPage = 1;
 const PAGE_SIZE = 50;
 let autoRefreshTimer = null;
 let activeTab = 'scan';
+let lastScanMethod = 'Typed Code'; // 'Camera Scan' | 'Typed QR' | 'Typed Code'
 
 // ============================================================
 // PERSISTENCE
@@ -1316,6 +1407,7 @@ function switchTab(tab, el) {
   if (tab === 'analytics') { fetchAnalytics(); }
   if (tab === 'database')  { renderTable(); }
   if (tab === 'edit')      { onEditTabOpen(); }
+  if (tab === 'log')       { renderLogTab(); }
 }
 
 // ============================================================
@@ -1337,6 +1429,14 @@ function doScan() {
     document.getElementById('scanInput').value = raw;
   }
 
+  // Detect entry method if not already set by camera
+  if (lastScanMethod !== 'Camera Scan') {
+    if (/^MJ-FA-\d{4}$/i.test(raw.trim())) {
+      lastScanMethod = 'Typed QR';
+    } else {
+      lastScanMethod = 'Typed Code';
+    }
+  }
   const query = raw.toUpperCase().replace(/\s+/g,' ').trim();
 
   let asset = assets.find(a =>
@@ -1469,13 +1569,16 @@ async function verifyAsset(qrId, action) {
   if (action === 'Verified') asset.status = 'Verified';
   if (action === 'Needs Attention') asset.status = 'Needs Attention';
 
+  const entryMethod = lastScanMethod;
+  lastScanMethod = 'Typed Code'; // reset after each use
   verificationLog.unshift({
     qr_id: qrId, asset_code: asset.asset_code,
     asset_name: asset.asset_name, timestamp: ts,
     condition: notes, action,
     by: currentUser?.name || '', role: currentUser?.role || '',
     gps: gpsStr, mapsLink,
-    category: asset.category, location: asset.location
+    category: asset.category, location: asset.location,
+    entry_method: entryMethod
   });
   if (verificationLog.length > 500) verificationLog = verificationLog.slice(0, 500);
 
@@ -2218,6 +2321,7 @@ function tickScan() {
               document.getElementById('tab-scan').classList.add('active');
               document.querySelector('.nav-tab').classList.add('active');
               activeTab = 'scan';
+              lastScanMethod = 'Camera Scan';
               doScan();
               window.scrollTo(0, 0);
             }, 300);
@@ -2723,6 +2827,151 @@ async function saveEditAsset() {
 function cancelEdit() {
   editTargetQrId = null;
   renderEditSearchScreen();
+}
+
+// ============================================================
+// SUBMISSIONS LOG TAB
+// ============================================================
+function renderLogTab() {
+  renderLogSummary();
+  renderLogTable();
+}
+
+function getLogFiltered() {
+  var search  = ((document.getElementById('logSearch')    || {}).value || '').toLowerCase();
+  var action  = ((document.getElementById('logFilterAction') || {}).value || '');
+  var entry   = ((document.getElementById('logFilterEntry')  || {}).value || '');
+
+  return verificationLog.filter(function(v) {
+    if (action && v.action !== action) return false;
+    if (entry) {
+      var em = v.entry_method || detectEntryMethod(v.qr_id);
+      if (em !== entry) return false;
+    }
+    if (search) {
+      var hay = ((v.asset_name||'') + ' ' + (v.asset_code||'') + ' ' +
+                 (v.qr_id||'') + ' ' + (v.by||'') + ' ' + (v.condition||'')).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function detectEntryMethod(qrId) {
+  // Fallback for older log entries without entry_method stored
+  if (!qrId) return 'Typed Code';
+  return /^MJ-FA-\d{4}$/i.test(qrId) ? 'Typed QR' : 'Typed Code';
+}
+
+function renderLogSummary() {
+  var bar = document.getElementById('logSummaryBar');
+  if (!bar) return;
+  var total    = verificationLog.length;
+  var camera   = verificationLog.filter(function(v){ return v.entry_method === 'Camera Scan'; }).length;
+  var typedQR  = verificationLog.filter(function(v){
+    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    return em === 'Typed QR';
+  }).length;
+  var typedCode = verificationLog.filter(function(v){
+    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    return em === 'Typed Code';
+  }).length;
+  var verified  = verificationLog.filter(function(v){ return v.action === 'Verified'; }).length;
+  var flagPct   = total > 0 ? Math.round((typedCode / total) * 100) : 0;
+
+  bar.innerHTML =
+    '<div class="log-stat good"><strong>' + total + '</strong>Total Submissions</div>' +
+    '<div class="log-stat good"><strong>' + camera + '</strong>Camera Scans</div>' +
+    '<div class="log-stat"><strong>' + typedQR + '</strong>Typed QR</div>' +
+    '<div class="log-stat warn"><strong>' + typedCode + '</strong>Typed Code (flagged)</div>' +
+    '<div class="log-stat good"><strong>' + verified + '</strong>Verified Actions</div>' +
+    '<div class="log-stat' + (flagPct > 20 ? ' warn' : '') + '"><strong>' + flagPct + '%</strong>Manual Entry Rate</div>';
+}
+
+function renderLogTable() {
+  var tbody  = document.getElementById('logTableBody');
+  var footer = document.getElementById('logFooter');
+  if (!tbody) return;
+
+  var filtered = getLogFiltered();
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--text3);">No submissions found. Start scanning assets to build the log.</td></tr>';
+    if (footer) footer.textContent = '';
+    return;
+  }
+
+  var actionBadge = function(action) {
+    var cls = (action||'').toLowerCase().replace(/\s+/g,'-');
+    return '<span class="action-badge ' + cls + '">' + (action||'&mdash;') + '</span>';
+  };
+
+  var entryBadge = function(v) {
+    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    if (em === 'Camera Scan') return '<span class="entry-badge camera">&#128247; Camera</span>';
+    if (em === 'Typed QR')    return '<span class="entry-badge typed-qr">&#9000; Typed QR</span>';
+    return '<span class="entry-badge typed-code">&#9888; Typed Code</span>' +
+           '<div class="log-flag-note">No QR sticker confirmed</div>';
+  };
+
+  var rowClass = function(v) {
+    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    if (em === 'Camera Scan') return 'log-row-camera';
+    if (em === 'Typed QR')    return 'log-row-typed-qr';
+    return 'log-row-typed-code';
+  };
+
+  var rows = filtered.map(function(v, i) {
+    var gpsCell = (v.gps && v.mapsLink)
+      ? '<a href="' + v.mapsLink + '" target="_blank" style="color:var(--accent);font-size:10px;">&#128205; View</a>'
+      : '<span style="color:var(--text3);">&mdash;</span>';
+    var notes = v.condition || '';
+    if (notes && notes.length > 40) notes = notes.substring(0, 40) + '&hellip;';
+
+    return '<tr class="' + rowClass(v) + '">' +
+      '<td style="color:var(--text3);font-size:10px;font-family:'Space Mono',monospace;">' + (filtered.length - i) + '</td>' +
+      '<td style="font-family:'Space Mono',monospace;font-size:10px;white-space:nowrap;color:var(--text2);">' + (v.timestamp||'&mdash;') + '</td>' +
+      '<td><span class="code-pill">' + (v.qr_id||'&mdash;') + '</span></td>' +
+      '<td style="font-size:12px;font-weight:500;">' + (v.asset_name||'&mdash;') + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);">' + (v.category||'&mdash;') + '</td>' +
+      '<td>' + actionBadge(v.action) + '</td>' +
+      '<td>' + entryBadge(v) + '</td>' +
+      '<td style="font-size:11px;color:var(--accent);">' + (v.by||'&mdash;') + '</td>' +
+      '<td style="font-size:11px;color:var(--text2);">' + (notes||'&mdash;') + '</td>' +
+      '<td>' + gpsCell + '</td>' +
+      '</tr>';
+  }).join('');
+
+  tbody.innerHTML = rows;
+  if (footer) footer.textContent = 'Showing ' + filtered.length + ' of ' + verificationLog.length + ' total submissions';
+}
+
+function exportLogCSV() {
+  var filtered = getLogFiltered();
+  var header = ['Row','Timestamp','QR_ID','Asset_Code','Asset_Name','Category','Location','Action','Entry_Method','Verifier','Condition_Notes','GPS'];
+  var rows = filtered.map(function(v, i) {
+    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    return [
+      filtered.length - i,
+      '"' + (v.timestamp||'') + '"',
+      v.qr_id||'',
+      v.asset_code||'',
+      '"' + (v.asset_name||'').replace(/"/g,'""') + '"',
+      '"' + (v.category||'') + '"',
+      '"' + (v.location||'') + '"',
+      v.action||'',
+      em,
+      '"' + (v.by||'') + '"',
+      '"' + (v.condition||'').replace(/"/g,'""') + '"',
+      v.gps||''
+    ].join(',');
+  });
+  var csv = [header.join(',')].concat(rows).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'MJ_FA_Submissions_Log.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 </script>
