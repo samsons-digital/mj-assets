@@ -1098,8 +1098,7 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
       </select>
       <select class="db-filter" id="logFilterEntry" onchange="renderLogTable()" style="min-width:150px;">
         <option value="">All Entry Methods</option>
-        <option value="Camera Scan">Camera Scan</option>
-        <option value="Typed QR">Scanned QR</option>
+        <option value="Scanned QR">Scanned QR</option>
         <option value="Typed Code">Typed Code (flag)</option>
         <option value="Untracked">Untracked (historical)</option>
       </select>
@@ -2929,7 +2928,9 @@ function getLogFiltered() {
     if (action && v.action !== action) return false;
     if (entry) {
       var em = v.entry_method || detectEntryMethod(v.qr_id, v);
-      if (em !== entry) return false;
+      var isScanned = (em === 'Camera Scan' || em === 'Typed QR');
+      if (entry === 'Scanned QR' && !isScanned) return false;
+      if (entry !== 'Scanned QR' && em !== entry) return false;
     }
     if (dateF === 'tracked') {
       if (!v.entry_method) return false; // only rows with a stored entry_method
@@ -2972,10 +2973,9 @@ function renderLogSummary() {
   if (!bar) return;
   var source   = liveLogRows.length > 0 ? liveLogRows : verificationLog;
   var total    = source.length;
-  var camera   = source.filter(function(v){ return v.entry_method === 'Camera Scan'; }).length;
-  var typedQR  = source.filter(function(v){
+  var scannedQR = source.filter(function(v){
     var em = v.entry_method || detectEntryMethod(v.qr_id, v);
-    return em === 'Typed QR';
+    return em === 'Camera Scan' || em === 'Typed QR';
   }).length;
   var typedCode = source.filter(function(v){
     var em = v.entry_method || detectEntryMethod(v.qr_id, v);
@@ -2990,8 +2990,7 @@ function renderLogSummary() {
 
   bar.innerHTML =
     '<div class="log-stat good"><strong>' + total + '</strong>Total Submissions</div>' +
-    '<div class="log-stat good"><strong>' + camera + '</strong>Camera Scan</div>' +
-    '<div class="log-stat"><strong>' + typedQR + '</strong>Scanned QR</div>' +
+    '<div class="log-stat good"><strong>' + scannedQR + '</strong>Scanned QR</div>' +
     '<div class="log-stat warn"><strong>' + typedCode + '</strong>Typed Code (flagged)</div>' +
     '<div class="log-stat good"><strong>' + verified + '</strong>Verified Actions</div>' +
     '<div class="log-stat"><strong style="color:#888;">' + untracked + '</strong>Untracked (historical)</div>';
@@ -3017,8 +3016,7 @@ function renderLogTable() {
 
   var entryBadge = function(v) {
     var em = v.entry_method || detectEntryMethod(v.qr_id, v);
-    if (em === 'Camera Scan') return '<span class="entry-badge camera">&#128247; Camera</span>';
-    if (em === 'Typed QR')    return '<span class="entry-badge typed-qr">&#9000; Scanned QR</span>';
+    if (em === 'Camera Scan' || em === 'Typed QR') return '<span class="entry-badge typed-qr">&#9000; Scanned QR</span>';
     if (em === 'Untracked')   return '<span class="entry-badge untracked">&#8212; Untracked</span>';
     return '<span class="entry-badge typed-code">&#9888; Typed Code</span>' +
            '<div class="log-flag-note">No QR sticker confirmed</div>';
@@ -3026,8 +3024,7 @@ function renderLogTable() {
 
   var rowClass = function(v) {
     var em = v.entry_method || detectEntryMethod(v.qr_id, v);
-    if (em === 'Camera Scan') return 'log-row-camera';
-    if (em === 'Typed QR')    return 'log-row-typed-qr';
+    if (em === 'Camera Scan' || em === 'Typed QR') return 'log-row-typed-qr';
     if (em === 'Untracked')   return 'log-row-untracked';
     return 'log-row-typed-code';
   };
