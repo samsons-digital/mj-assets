@@ -620,6 +620,8 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
 .action-badge.scrapped{background:rgba(108,92,231,0.12);color:#6c5ce7;}
 .action-badge.disposed{background:rgba(232,49,58,0.12);color:#e8313a;}
 .action-badge.edited{background:rgba(0,102,204,0.12);color:#0066cc;}
+.entry-badge.untracked{background:rgba(150,150,150,0.12);color:#888;border:1px solid rgba(150,150,150,0.25);}
+.log-row-untracked td{background:rgba(0,0,0,0.01);}
 .log-summary-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
 .log-stat{background:#ffffff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--text2);}
 .log-stat strong{display:block;font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);line-height:1.1;}
@@ -1099,6 +1101,13 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
         <option value="Camera Scan">Camera Scan</option>
         <option value="Typed QR">Typed QR</option>
         <option value="Typed Code">Typed Code (flag)</option>
+        <option value="Untracked">Untracked (historical)</option>
+      </select>
+      <select class="db-filter" id="logFilterDate" onchange="renderLogTable()" style="min-width:130px;">
+        <option value="">All Dates</option>
+        <option value="today">Today</option>
+        <option value="week">This Week</option>
+        <option value="tracked">Tracked Only</option>
       </select>
     </div>
     <div class="log-table-wrap">
@@ -2908,13 +2917,37 @@ function getLogFiltered() {
   var search  = ((document.getElementById('logSearch')    || {}).value || '').toLowerCase();
   var action  = ((document.getElementById('logFilterAction') || {}).value || '');
   var entry   = ((document.getElementById('logFilterEntry')  || {}).value || '');
+  var dateF   = ((document.getElementById('logFilterDate')   || {}).value || '');
+
+  var now = new Date();
+  var todayStr = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+  var weekAgo  = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   var source  = liveLogRows.length > 0 ? liveLogRows : verificationLog;
   return source.filter(function(v) {
     if (action && v.action !== action) return false;
     if (entry) {
-      var em = v.entry_method || detectEntryMethod(v.qr_id);
+      var em = v.entry_method || detectEntryMethod(v.qr_id, v);
       if (em !== entry) return false;
+    }
+    if (dateF === 'tracked') {
+      if (!v.entry_method) return false; // only rows with a stored entry_method
+    }
+    if (dateF === 'today') {
+      var ts = v.timestamp || '';
+      if (!ts.startsWith(todayStr) && !ts.includes('T')) {
+        if (!ts.startsWith(todayStr)) return false;
+      } else if (ts.includes('T')) {
+        var d = new Date(ts);
+        if (isNaN(d) || d < new Date(now.toDateString())) return false;
+      }
+    }
+    if (dateF === 'week') {
+      var ts2 = v.timestamp || '';
+      if (ts2.includes('T')) {
+        var d2 = new Date(ts2);
+        if (isNaN(d2) || d2 < weekAgo) return false;
+      }
     }
     if (search) {
       var hay = ((v.asset_name||'') + ' ' + (v.asset_code||'') + ' ' +
@@ -2925,8 +2958,10 @@ function getLogFiltered() {
   });
 }
 
-function detectEntryMethod(qrId) {
-  // Fallback for older log entries without entry_method stored
+function detectEntryMethod(qrId, row) {
+  // If this row came from Sheets and has no entry_method stored, it is genuinely untracked
+  if (row && row.source === 'sheets' && !row.entry_method) return 'Untracked';
+  // Local session fallback
   if (!qrId) return 'Typed Code';
   return /^MJ-FA-\d{4}$/i.test(qrId) ? 'Typed QR' : 'Typed Code';
 }
@@ -2938,15 +2973,19 @@ function renderLogSummary() {
   var total    = source.length;
   var camera   = source.filter(function(v){ return v.entry_method === 'Camera Scan'; }).length;
   var typedQR  = source.filter(function(v){
-    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    var em = v.entry_method || detectEntryMethod(v.qr_id, v);
     return em === 'Typed QR';
   }).length;
   var typedCode = source.filter(function(v){
-    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    var em = v.entry_method || detectEntryMethod(v.qr_id, v);
     return em === 'Typed Code';
   }).length;
   var verified  = source.filter(function(v){ return v.action === 'Verified'; }).length;
   var flagPct   = total > 0 ? Math.round((typedCode / total) * 100) : 0;
+
+  var untracked = source.filter(function(v){ return detectEntryMethod(v.qr_id, v) === 'Untracked'; }).length;
+  var tracked   = total - untracked;
+  var flagPct2  = tracked > 0 ? Math.round((typedCode / tracked) * 100) : 0;
 
   bar.innerHTML =
     '<div class="log-stat good"><strong>' + total + '</strong>Total Submissions</div>' +
@@ -2954,7 +2993,7 @@ function renderLogSummary() {
     '<div class="log-stat"><strong>' + typedQR + '</strong>Typed QR</div>' +
     '<div class="log-stat warn"><strong>' + typedCode + '</strong>Typed Code (flagged)</div>' +
     '<div class="log-stat good"><strong>' + verified + '</strong>Verified Actions</div>' +
-    '<div class="log-stat' + (flagPct > 20 ? ' warn' : '') + '"><strong>' + flagPct + '%</strong>Manual Entry Rate</div>';
+    '<div class="log-stat"><strong style="color:#888;">' + untracked + '</strong>Untracked (historical)</div>';
 }
 
 function renderLogTable() {
@@ -2976,17 +3015,19 @@ function renderLogTable() {
   };
 
   var entryBadge = function(v) {
-    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    var em = v.entry_method || detectEntryMethod(v.qr_id, v);
     if (em === 'Camera Scan') return '<span class="entry-badge camera">&#128247; Camera</span>';
     if (em === 'Typed QR')    return '<span class="entry-badge typed-qr">&#9000; Typed QR</span>';
+    if (em === 'Untracked')   return '<span class="entry-badge untracked">&#8212; Untracked</span>';
     return '<span class="entry-badge typed-code">&#9888; Typed Code</span>' +
            '<div class="log-flag-note">No QR sticker confirmed</div>';
   };
 
   var rowClass = function(v) {
-    var em = v.entry_method || detectEntryMethod(v.qr_id);
+    var em = v.entry_method || detectEntryMethod(v.qr_id, v);
     if (em === 'Camera Scan') return 'log-row-camera';
     if (em === 'Typed QR')    return 'log-row-typed-qr';
+    if (em === 'Untracked')   return 'log-row-untracked';
     return 'log-row-typed-code';
   };
 
