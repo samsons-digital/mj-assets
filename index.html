@@ -1099,7 +1099,7 @@ main{position:relative; z-index:1; min-height:calc(100vh - 110px);}
       <select class="db-filter" id="logFilterEntry" onchange="renderLogTable()" style="min-width:150px;">
         <option value="">All Entry Methods</option>
         <option value="Camera Scan">Camera Scan</option>
-        <option value="Typed QR">Typed QR</option>
+        <option value="Typed QR">Scanned QR</option>
         <option value="Typed Code">Typed Code (flag)</option>
         <option value="Untracked">Untracked (historical)</option>
       </select>
@@ -1625,7 +1625,8 @@ async function verifyAsset(qrId, action) {
       gps_coordinates: gpsStr,
       gps_accuracy_m: currentGPS?.accuracy || '',
       google_maps_link: mapsLink,
-      device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'
+      device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+      entry_method: entryMethod
     };
 
     try {
@@ -2989,8 +2990,8 @@ function renderLogSummary() {
 
   bar.innerHTML =
     '<div class="log-stat good"><strong>' + total + '</strong>Total Submissions</div>' +
-    '<div class="log-stat good"><strong>' + camera + '</strong>Camera Scans</div>' +
-    '<div class="log-stat"><strong>' + typedQR + '</strong>Typed QR</div>' +
+    '<div class="log-stat good"><strong>' + camera + '</strong>Camera Scan</div>' +
+    '<div class="log-stat"><strong>' + typedQR + '</strong>Scanned QR</div>' +
     '<div class="log-stat warn"><strong>' + typedCode + '</strong>Typed Code (flagged)</div>' +
     '<div class="log-stat good"><strong>' + verified + '</strong>Verified Actions</div>' +
     '<div class="log-stat"><strong style="color:#888;">' + untracked + '</strong>Untracked (historical)</div>';
@@ -3017,7 +3018,7 @@ function renderLogTable() {
   var entryBadge = function(v) {
     var em = v.entry_method || detectEntryMethod(v.qr_id, v);
     if (em === 'Camera Scan') return '<span class="entry-badge camera">&#128247; Camera</span>';
-    if (em === 'Typed QR')    return '<span class="entry-badge typed-qr">&#9000; Typed QR</span>';
+    if (em === 'Typed QR')    return '<span class="entry-badge typed-qr">&#9000; Scanned QR</span>';
     if (em === 'Untracked')   return '<span class="entry-badge untracked">&#8212; Untracked</span>';
     return '<span class="entry-badge typed-code">&#9888; Typed Code</span>' +
            '<div class="log-flag-note">No QR sticker confirmed</div>';
